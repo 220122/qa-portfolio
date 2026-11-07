@@ -1,7 +1,8 @@
 # QA Portfolio · 软件测试实习作品集
 
-> **给面试官的一句话说明**：被测产品（RAG 文档问答 / 论文生成助手 / 实验报告批阅）涉及私有业务数据与校内资料，**产品代码与数据集不公开**；本仓库只公开**测试资产**：测试计划、测试用例、缺陷报告、接口/UI 自动化脚本与测试报告。
-> 这与真实工作一致——测试工程师交付的成果本来就是"测试资产"，而不是被测产品源码。
+> **这是什么**：我在自学软件测试期间，对自己的三个 AI 项目做的**完整测试资产**——测试用例、缺陷报告、接口自动化脚本与测试报告。
+> **被测产品源码**在各自仓库：[course-rag-agent](https://github.com/220122/course-rag-agent)（FastAPI + ChromaDB + Vue3）· [experiment-report-review-agent](https://github.com/220122/experiment-report-review-agent)（Streamlit 多智能体）· [thesis-writing-agent](https://github.com/220122/thesis-writing-agent)（Streamlit + DeepSeek）。
+> 测试资产与被测代码分开管理：被测产品会持续迭代，测试资产是独立可复用的回归基线。
 
 ## 目录结构
 
