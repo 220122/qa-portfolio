@@ -29,27 +29,39 @@ def test_upload_docx_success(api, docx_path):
 
 @pytest.mark.negative
 @pytest.mark.parametrize(
-    "filename, content, mime, case",
+    "filename, content, mime, expect_keyword, case",
     [
-        ("测试.txt", b"hello", "text/plain", "不支持的扩展名"),
-        ("空文件.docx", b"", DOCX_MIME, "空文件"),
-        ("伪装.docx", "这是纯文本，不是真正的 docx".encode("utf-8"), DOCX_MIME, "扩展名伪装"),
-        ("伪装.pdf", b"%PDF-1.4 fake", "application/pdf", "伪造 pdf 文件头"),
+        ("测试.txt", b"hello", "text/plain", "仅支持", "不支持的扩展名"),
+        ("空文件.docx", b"", DOCX_MIME, "内容为空", "空文件"),
+        (
+            "伪装.docx",
+            "这是纯文本，不是真正的 docx".encode("utf-8"),
+            DOCX_MIME,
+            "不是有效的 DOCX",
+            "扩展名伪装",
+        ),
+        ("伪装.pdf", b"%PDF-1.4 fake", "application/pdf", "解析失败", "伪造 pdf 文件头"),
     ],
     ids=["txt被拒绝", "空文件被拒绝", "扩展名伪装被拒绝", "伪造pdf头被拒绝"],
 )
-def test_upload_invalid_file(api, filename, content, mime, case):
+def test_upload_invalid_file(api, filename, content, mime, expect_keyword, case):
     """用户输入错误应该是 4xx（客户端错误），不是 500（服务端故障）。
 
     若实际返回 500，说明后端把"用户传错文件"当成了"服务异常"——
     上游无法区分该重试还是该改参数，这就是缺陷。
+
+    断言修订（2026-11-08）：早期版本 4 个场景共用关键字「仅支持」，
+    但该文案只对"扩展名不支持"成立；空文件 / 内容伪装 / 文件损坏走的是
+    不同的错误分支。因此改为**按场景各自校验提示语义**，
+    而状态码断言保持严格（必须 400）。
+    这是修正用例自身的缺陷（断言过窄），不是放宽断言去迁就实现。
     """
     r = upload_raw(api, filename, content, mime)
     assert r.status_code == 400, (
         f"[{case}] 期望 400（客户端错误），实际 {r.status_code}\n"
         f"响应体: {r.text[:300]}"
     )
-    assert_contains(r.text, UPLOAD_ERROR_KEYWORD, f"[{case}] 错误提示应可读")
+    assert_contains(r.text, expect_keyword, f"[{case}] 错误提示应包含「{expect_keyword}」")
 
 
 @pytest.mark.negative

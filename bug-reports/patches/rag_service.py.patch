@@ -1,0 +1,31 @@
+﻿diff --git "a/E:\\DSH\\\346\265\213\350\257\225\345\256\236\344\271\240-3\345\244\251\345\206\262\345\210\272\\_backup_original\\rag_service.py.bak" "b/E:\\DSH\\new-chat\\course-rag-agent\\backend\\rag_service.py"
+index e370b4c..61692fa 100644
+--- "a/E:\\DSH\\\346\265\213\350\257\225\345\256\236\344\271\240-3\345\244\251\345\206\262\345\210\272\\_backup_original\\rag_service.py.bak"
++++ "b/E:\\DSH\\new-chat\\course-rag-agent\\backend\\rag_service.py"
+@@ -48,7 +48,12 @@ def add_document(file_path: str, filename: str) -> dict:
+     _check_embedding_key()
+ 
+     # 1. 按页/章节解析，扫描页与图片直接 OCR
+-    pages = parse_document_pages(file_path)
++    try:
++        pages = parse_document_pages(file_path)
++    except Exception as e:  # noqa: BLE001
++        # 解析失败属"用户传的文件不可用"，用 ValueError 表达，
++        # 由接口层映射为 400（而不是把用户输入问题报成 500 服务故障）
++        raise ValueError(f"文件无法解析（可能已损坏或与扩展名不符）：{e}") from e
+ 
+     # 2. 逐页切块，保证每块能归属到某一页
+     ids: list[str] = []
+@@ -96,6 +101,12 @@ def list_documents() -> list[dict]:
+     return list(docs.values())
+ 
+ 
++def document_exists(doc_id: str) -> bool:
++    """判断知识库中是否存在该文档（供删除接口做存在性校验）。"""
++    data = collection.get(where={"doc_id": doc_id}, limit=1, include=["metadatas"])
++    return bool(data.get("ids"))
++
++
+ def delete_document(doc_id: str) -> None:
+     """删除该文档的全部文本块。"""
+     collection.delete(where={"doc_id": doc_id})

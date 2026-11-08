@@ -1,0 +1,138 @@
+﻿diff --git "a/E:\\DSH\\\346\265\213\350\257\225\345\256\236\344\271\240-3\345\244\251\345\206\262\345\210\272\\_backup_original\\main.py.bak" "b/E:\\DSH\\new-chat\\course-rag-agent\\backend\\main.py"
+index 8c6e89c..bd4212b 100644
+--- "a/E:\\DSH\\\346\265\213\350\257\225\345\256\236\344\271\240-3\345\244\251\345\206\262\345\210\272\\_backup_original\\main.py.bak"
++++ "b/E:\\DSH\\new-chat\\course-rag-agent\\backend\\main.py"
+@@ -3,7 +3,7 @@ FastAPI 入口：知识库管理、智能问答、评测记录查询。在 backe
+     uvicorn main:app --reload --host 0.0.0.0 --port 8000
+ """
+ import os
+-import shutil
++import uuid
+ 
+ from fastapi import FastAPI, File, HTTPException, UploadFile
+ from fastapi.middleware.cors import CORSMiddleware
+@@ -28,6 +28,32 @@ app.add_middleware(
+ 
+ ALLOWED_EXTENSIONS = {".pdf", ".docx"}
+ 
++# 文件头（magic number）：只校验扩展名会被"改后缀"绕过，必须看内容
++MAGIC_NUMBERS = {
++    ".pdf": b"%PDF-",        # PDF 文件头
++    ".docx": b"PK\x03\x04",  # docx 本质是 zip，文件头为 PK\x03\x04
++}
++
++
++def _safe_remove(path: str, retries: int = 3, delay: float = 0.2) -> None:
++    """尽力删除临时文件，绝不因清理失败而掩盖真正的错误。
++
++    Windows 上解析器可能仍持有文件句柄（WinError 32），直接 os.remove 会抛
++    PermissionError，把"用户传了坏文件"（应 400）变成"服务端 500"。所以这里重试
++    并在最终失败时静默放弃——残留文件由运维定期清理，不能让它影响错误码语义。
++    """
++    import time
++
++    for i in range(retries):
++        try:
++            if os.path.exists(path):
++                os.remove(path)
++            return
++        except OSError:
++            if i == retries - 1:
++                return
++            time.sleep(delay)
++
+ 
+ @app.get("/api/health")
+ def health():
+@@ -37,22 +63,54 @@ def health():
+ 
+ @app.post("/api/documents/upload")
+ async def upload_document(file: UploadFile = File(...)):
+-    """上传 PDF / Word 课件，解析切块并向量化入库。"""
+-    ext = os.path.splitext(file.filename)[1].lower()
++    """上传 PDF / Word 课件，解析切块并向量化入库。
++
++    校验顺序：文件名合法性 → 扩展名 → 内容非空 → 文件头 → 落盘 → 解析入库。
++    落盘文件名由服务端生成（uuid），原始文件名只作为元数据，
++    避免路径穿越（BUG-001）与同名覆盖。
++    """
++    raw_name = file.filename or ""
++    # 文件名不得含路径分隔符或 ..，否则直接拒绝（防御路径穿越）
++    if ".." in raw_name or "/" in raw_name or "\\" in raw_name:
++        raise HTTPException(status_code=400, detail="文件名不合法：不允许包含路径分隔符")
++
++    original_name = os.path.basename(raw_name)
++    ext = os.path.splitext(original_name)[1].lower()
+     if ext not in ALLOWED_EXTENSIONS:
+         raise HTTPException(status_code=400, detail="仅支持 PDF / DOCX 格式文件")
+ 
+-    save_path = os.path.join(settings.upload_dir, file.filename)
++    content = await file.read()
++    if not content:
++        raise HTTPException(status_code=400, detail="文件内容为空，请重新导出后再上传")
++
++    if not content.startswith(MAGIC_NUMBERS[ext]):
++        raise HTTPException(
++            status_code=400,
++            detail=f"文件内容不是有效的 {ext.lstrip('.').upper()}，请勿仅修改扩展名后上传",
++        )
++
++    # 服务端生成落盘名：原始文件名不参与路径拼接
++    save_path = os.path.join(settings.upload_dir, f"{uuid.uuid4().hex}{ext}")
+     with open(save_path, "wb") as buffer:
+-        shutil.copyfileobj(file.file, buffer)
++        buffer.write(content)
+ 
++    # 注意：清理必须放在 except 之外执行。
++    # 若在 except 里直接 raise HTTPException，Python 会把当前异常链挂到新异常上
++    # （__context__），原 traceback 连同 pymupdf 的文件句柄会一直活到响应结束，
++    # 导致 os.remove 抛 PermissionError(WinError 32)，把 400 变成 500。
++    error = None
+     try:
+-        doc_info = rag_service.add_document(save_path, file.filename)
+-    except Exception as e:
+-        # 入库失败时清掉已保存的文件
+-        if os.path.exists(save_path):
+-            os.remove(save_path)
+-        raise HTTPException(status_code=500, detail=f"文档处理失败：{e}")
++        doc_info = rag_service.add_document(save_path, original_name)
++    except ValueError as e:
++        # 内容不可解析属客户端问题 → 400
++        error = (400, f"文档解析失败：{e}")
++    except Exception as e:  # noqa: BLE001
++        # 真正的服务端故障才 500（如向量库不可写）
++        error = (500, f"文档处理失败：{e}")
++
++    if error is not None:
++        _safe_remove(save_path)  # 此时异常对象已释放，文件句柄已关闭
++        raise HTTPException(status_code=error[0], detail=error[1])
+ 
+     return {"message": "上传并入库成功", "document": doc_info}
+ 
+@@ -65,7 +123,9 @@ def get_documents():
+ 
+ @app.delete("/api/documents/{doc_id}")
+ def remove_document(doc_id: str):
+-    """删除指定文档及其全部向量片段。"""
++    """删除指定文档及其全部向量片段；文档不存在返回 404（BUG-003）。"""
++    if not rag_service.document_exists(doc_id):
++        raise HTTPException(status_code=404, detail="文档不存在")
+     rag_service.delete_document(doc_id)
+     return {"message": "删除成功", "doc_id": doc_id}
+ 
+@@ -76,9 +136,13 @@ def chat(req: ChatRequest):
+     RAG 问答：检索到课程片段则调用对话模型作答，无片段时返回固定拒答话术。
+     响应里带本次问答的评测信息。
+     """
++    # min_length 挡不住纯空白字符，这里补一层业务校验（BUG-004）
++    if not (req.question or "").strip():
++        raise HTTPException(status_code=400, detail="提问内容不能为空")
++
+     try:
+-        return rag_service.answer_question(req.question)
+-    except Exception as e:
++        return rag_service.answer_question(req.question.strip())
++    except Exception as e:  # noqa: BLE001
+         raise HTTPException(status_code=500, detail=f"问答服务异常：{e}")
+ 
+ 
