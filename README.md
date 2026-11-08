@@ -106,6 +106,7 @@ AI 质量层回归（同一 30 条评测集，重复 3 次）：误拒答率 **2
 - 阈值扫描记录：[`api-tests/reports/阈值扫描-20261108-2334.md`](api-tests/reports/阈值扫描-20261108-2334.md)
   > 关于 `评测集结果-2341.md` 里出现的 25%：那是同一配置下的**重复测量**之一（三次分别为 20% / 25% / 20%，漏拒率恒为 0%），
   > 用来说明该指标存在 ±5% 波动、单次测量不足以判定回归。核心 4 条误拒项三次一致。
+  > 三次原始记录：[`2331`](api-tests/reports/评测集结果-20261108-2331.md)（修复前 20%）、[`2341`](api-tests/reports/评测集结果-20261108-2341.md)（25%）、[`2342`](api-tests/reports/评测集结果-20261108-2342.md)（20%）
 - 结果导出：`cd api-tests && python export_results.py`（自动生成报告，不手抄数字）
 - 评测集回归：`python check_golden_set.py`
 - 阈值扫描：`python threshold_scan.py --backend-dir <backend 路径>`（用后端 venv 跑，无需改配置重启）
