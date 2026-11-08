@@ -23,9 +23,9 @@ def test_health_response_time(api):
 def test_health_reflects_dependency_failure(api):
     """健康检查应能反映下游依赖状态。
 
-    当前实现是硬编码 return {"status": "ok"}，依赖挂了也会说 ok → 属缺陷线索。
+    当前实现是硬编码 return {"status": "ok"}，依赖挂了也会说 ok（对应 R-04）。
     需要人为制造故障才有意义，默认 skip，避免制造误报：
       1. 把 backend/.env 的 CHROMA_DIR 改到不可写目录，或让 DEEPSEEK_API_KEY 失效
       2. 重启后端后执行：pytest test_health.py -k dependency -m negative
     """
-    pytest.skip("需先人为制造依赖故障后再执行，详见 docs/缺陷线索清单 线索 4")
+    pytest.skip("需先人为制造依赖故障后再执行，详见 docs/风险点排查-course-rag-agent.md 的 R-04")

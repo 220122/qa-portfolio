@@ -17,8 +17,11 @@ data/raw/
 !data/.gitkeep
 
 # ---- 测试产物 ----
+# 说明：reports/*.md（执行结果、评测集结果）要提交，作为真实执行记录；
+# 其余原始产物（junit、html、截图）不提交。
 reports/*.html
 reports/*.json
+reports/*.xml
 allure-results/
 allure-report/
 screenshots/*.png

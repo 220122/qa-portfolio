@@ -1,0 +1,42 @@
+{
+  "meta": {
+    "name": "课程知识库问答评测集",
+    "course": "操作系统",
+    "purpose": "改动切块参数 / 更换 embedding 模型 / 调整拒答阈值后，用它做回归，观察误拒答率与漏拒率是否劣化",
+    "total": 30,
+    "note": "in_scope = 应当作答且答对；out_of_scope = 必须触发固定拒答话术"
+  },
+  "cases": [
+    {"id": "G-01", "topic": "文件系统", "category": "in_scope", "question": "文件的物理结构有哪几种？"},
+    {"id": "G-02", "topic": "进程", "category": "in_scope", "question": "进程和线程的区别是什么？"},
+    {"id": "G-03", "topic": "内存", "category": "in_scope", "question": "什么是虚拟内存？"},
+    {"id": "G-04", "topic": "内存", "category": "in_scope", "question": "页表的作用是什么？"},
+    {"id": "G-05", "topic": "死锁", "category": "in_scope", "question": "死锁的四个必要条件是什么？"},
+    {"id": "G-06", "topic": "调度", "category": "in_scope", "question": "进程调度有哪些常见算法？各自的优缺点是什么？"},
+    {"id": "G-07", "topic": "进程", "category": "in_scope", "question": "什么是上下文切换？开销来自哪里？"},
+    {"id": "G-08", "topic": "内存", "category": "in_scope", "question": "分页和分段有什么区别？"},
+    {"id": "G-09", "topic": "内存", "category": "in_scope", "question": "什么是缺页中断？缺页时系统做了什么？"},
+    {"id": "G-10", "topic": "IO", "category": "in_scope", "question": "SPOOLing 技术的作用是什么？"},
+    {"id": "G-11", "topic": "同步", "category": "in_scope", "question": "什么是临界区？进入临界区需要满足哪些条件？"},
+    {"id": "G-12", "topic": "死锁", "category": "in_scope", "question": "银行家算法用于解决什么问题？"},
+    {"id": "G-13", "topic": "IO", "category": "in_scope", "question": "缓冲技术有哪几种？各有什么作用？"},
+    {"id": "G-14", "topic": "IO", "category": "in_scope", "question": "什么是 DMA 方式？和中断驱动方式有什么不同？"},
+    {"id": "G-15", "topic": "文件系统", "category": "in_scope", "question": "inode 中存储了哪些信息？"},
+    {"id": "G-16", "topic": "死锁", "category": "in_scope", "question": "死锁的预防策略有哪些？"},
+    {"id": "G-17", "topic": "内存", "category": "in_scope", "question": "什么是写时复制（COW）？"},
+    {"id": "G-18", "topic": "内存", "category": "in_scope", "question": "什么是抖动（thrashing）？如何避免？"},
+    {"id": "G-19", "topic": "进程", "category": "in_scope", "question": "进程间通信有哪些方式？"},
+    {"id": "G-20", "topic": "同步", "category": "in_scope", "question": "什么是管程？相比信号量有什么优势？"},
+
+    {"id": "G-21", "topic": "无关", "category": "out_of_scope", "question": "今天天气怎么样？"},
+    {"id": "G-22", "topic": "无关", "category": "out_of_scope", "question": "帮我写一首关于春天的诗"},
+    {"id": "G-23", "topic": "无关", "category": "out_of_scope", "question": "美国总统是谁？"},
+    {"id": "G-24", "topic": "无关", "category": "out_of_scope", "question": "Python 的装饰器怎么实现？"},
+    {"id": "G-25", "topic": "无关", "category": "out_of_scope", "question": "红烧肉怎么做？"},
+    {"id": "G-26", "topic": "边界", "category": "out_of_scope", "question": "你好"},
+    {"id": "G-27", "topic": "无关", "category": "out_of_scope", "question": "把这句话翻译成英文：操作系统很重要"},
+    {"id": "G-28", "topic": "无关", "category": "out_of_scope", "question": "推荐几本好看的小说"},
+    {"id": "G-29", "topic": "无关", "category": "out_of_scope", "question": "明天股市会涨吗？"},
+    {"id": "G-30", "topic": "边界", "category": "out_of_scope", "question": "1+1 等于几？"}
+  ]
+}

@@ -12,8 +12,8 @@ qa-portfolio/
 ├── docs/                     # 测试计划、测试报告、测试总结
 ├── test-cases/               # 测试用例（按项目分文件）
 ├── bug-reports/              # 缺陷报告（模板 + 实例）
-├── api-tests/                # pytest + requests 接口自动化（Day 2 产出）
-├── ui-tests/                 # Selenium UI 自动化（Day 3 产出）
+├── api-tests/                # pytest + requests 接口自动化
+├── ui-tests/                 # Selenium UI 自动化
 └── data/                     # 测试数据（脱敏）
 ```
 

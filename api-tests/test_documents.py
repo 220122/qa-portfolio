@@ -1,7 +1,7 @@
 """文档管理接口用例：上传 / 列表 / 删除。
 
 负向用例的断言是**按需求与 HTTP 语义**写的，不是按当前实现写的：
-如果跑出来是 500 而断言要 4xx，这条失败就是缺陷证据（见 docs/缺陷线索清单）。
+如果跑出来是 500 而断言要 4xx，这条失败就是缺陷证据（见 docs/风险点排查-course-rag-agent.md）。
 """
 import pytest
 
@@ -63,7 +63,7 @@ def test_upload_missing_file_field(api):
 def test_upload_path_traversal_filename(api, docx_path):
     """文件名路径穿越：filename 里带 ../ 时不应写到 upload_dir 之外。
 
-    这条用例是本项目最有价值的安全用例之一（见 docs 线索 3）。
+    这条用例对应风险评估项 R-03（见 docs/风险点排查-course-rag-agent.md）。
     """
     with open(docx_path, "rb") as f:
         r = api.post(
@@ -107,7 +107,7 @@ def test_delete_existing_document(api, temp_doc):
 def test_delete_nonexistent_document(api):
     """REST 语义：资源不存在应返回 404，而不是 500。
 
-    当前实现未做存在性校验，很可能返回 500（见 docs 线索 1）。
+    当前实现未做存在性校验，可能返回 500（对应 R-01）。
     """
     r = delete_document(api, "not_exist_123456")
     assert r.status_code == 404, (

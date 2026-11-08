@@ -51,7 +51,7 @@ Element Plus 的两个坑：
 - 输入框真实输入节点是 `.el-textarea__inner`，外面套 `el-textarea`，且部分版本 class 带随机后缀 → 用 `[class^='el-textarea']` 前缀匹配更稳
 - 按钮常无稳定 id → 用 `//button[contains(., '发送')]` 文本匹配
 
-## 稳定性设计（面试可以直接讲）
+## 稳定性设计
 
 - **显式等待替代 sleep**：等到"可点击/可见"就返回，最多等 15s（问答区等 90s）
 - **多候选定位**：`find_first(*locators)` 依次尝试，降低改版即挂的概率
