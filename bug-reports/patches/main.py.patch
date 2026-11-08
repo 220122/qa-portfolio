@@ -1,8 +1,11 @@
-﻿diff --git "a/E:\\DSH\\\346\265\213\350\257\225\345\256\236\344\271\240-3\345\244\251\345\206\262\345\210\272\\_backup_original\\main.py.bak" "b/E:\\DSH\\new-chat\\course-rag-agent\\backend\\main.py"
-index 8c6e89c..bd4212b 100644
---- "a/E:\\DSH\\\346\265\213\350\257\225\345\256\236\344\271\240-3\345\244\251\345\206\262\345\210\272\\_backup_original\\main.py.bak"
-+++ "b/E:\\DSH\\new-chat\\course-rag-agent\\backend\\main.py"
-@@ -3,7 +3,7 @@ FastAPI 入口：知识库管理、智能问答、评测记录查询。在 backe
+# 缺陷修复补丁（main.py）
+# 用法：在 course-rag-agent 仓库根目录执行
+#   git apply -p1 main.py.patch
+# 生成方式：原始备份 与 修复后文件 的 3 行上下文统一 diff
+
+--- a/backend/main.py
++++ b/backend/main.py
+@@ -3,7 +3,7 @@
      uvicorn main:app --reload --host 0.0.0.0 --port 8000
  """
  import os
@@ -11,7 +14,7 @@ index 8c6e89c..bd4212b 100644
  
  from fastapi import FastAPI, File, HTTPException, UploadFile
  from fastapi.middleware.cors import CORSMiddleware
-@@ -28,6 +28,32 @@ app.add_middleware(
+@@ -28,6 +28,32 @@
  
  ALLOWED_EXTENSIONS = {".pdf", ".docx"}
  
@@ -44,7 +47,7 @@ index 8c6e89c..bd4212b 100644
  
  @app.get("/api/health")
  def health():
-@@ -37,22 +63,54 @@ def health():
+@@ -37,22 +63,54 @@
  
  @app.post("/api/documents/upload")
  async def upload_document(file: UploadFile = File(...)):
@@ -109,7 +112,7 @@ index 8c6e89c..bd4212b 100644
  
      return {"message": "上传并入库成功", "document": doc_info}
  
-@@ -65,7 +123,9 @@ def get_documents():
+@@ -65,7 +123,9 @@
  
  @app.delete("/api/documents/{doc_id}")
  def remove_document(doc_id: str):
@@ -120,7 +123,7 @@ index 8c6e89c..bd4212b 100644
      rag_service.delete_document(doc_id)
      return {"message": "删除成功", "doc_id": doc_id}
  
-@@ -76,9 +136,13 @@ def chat(req: ChatRequest):
+@@ -76,9 +136,13 @@
      RAG 问答：检索到课程片段则调用对话模型作答，无片段时返回固定拒答话术。
      响应里带本次问答的评测信息。
      """
