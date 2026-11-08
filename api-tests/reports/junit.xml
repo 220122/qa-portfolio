@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites><testsuite name="pytest" errors="0" failures="6" skipped="1" tests="25" time="24.038" timestamp="2026-11-08T23:11:42.719019+08:00" hostname="LAPTOP-JHPEJDOE"><testcase classname="test_chat" name="test_chat_answer_in_scope" time="9.482" /><testcase classname="test_chat" name="test_chat_refuse_out_of_scope" time="0.051" /><testcase classname="test_chat" name="test_chat_invalid_input[\u7a7a\u5b57\u7b26\u4e32]" time="0.005" /><testcase classname="test_chat" name="test_chat_invalid_input[\u7f3a\u5b57\u6bb5]" time="0.004" /><testcase classname="test_chat" name="test_chat_invalid_input[null]" time="0.003" /><testcase classname="test_chat" name="test_chat_invalid_input[\u7eaf\u7a7a\u683c]" time="0.013"><failure message="AssertionError: [纯空格（有值但无意义）] 期望 400，实际 200&#10;  响应体: {&quot;question&quot;:&quot;   &quot;,&quot;answer&quot;:&quot;当前课程知识库中没有该知识点，无法作答。&quot;,&quot;retrieved&quot;:false,&quot;refused&quot;:true,&quot;evaluation&quot;:{&quot;id&quot;:&quot;20261108231152330802&quot;,&quot;timestamp&quot;:&quot;2026-11-08 23:11:52&quot;,&quot;question&quot;:&quot;   &quot;,&quot;retrieved&quot;:false,&quot;refused&quot;:true,&quot;chunk_summaries&quot;:[],&quot;answer&quot;:&quot;当前课程知识库中没有该知识点，无法作答。&quot;}}&#10;assert 200 == 400&#10; +  where 200 = &lt;Response [200]&gt;.status_code">api = &lt;requests.sessions.Session object at 0x000001E35B6BE0A0&gt;
+payload = {'question': '   '}, expect = 400, case = '纯空格（有值但无意义）'
+
+    @pytest.mark.negative
+    @pytest.mark.parametrize(
+        "payload, expect, case",
+        [
+            ({"question": ""}, 422, "空字符串"),
+            ({}, 422, "缺 question 字段"),
+            ({"question": None}, 422, "question 为 null"),
+            ({"question": "   "}, 400, "纯空格（有值但无意义）"),
+            ({"question": 12345}, 422, "类型错误：数字"),
+        ],
+        ids=["空字符串", "缺字段", "null", "纯空格", "类型错误"],
+    )
+    def test_chat_invalid_input(api, payload, expect, case):
+        """按需求写断言：不合法的入参应在参数校验层被拦下（4xx），
+        不应该被当成正常问题送进模型（会产生费用与延迟，甚至 500）。
+        """
+        r = chat_raw(api, payload)
+&gt;       assert r.status_code == expect, (
+            f"[{case}] 期望 {expect}，实际 {r.status_code}\n响应体: {r.text[:300]}"
+        )
+E       AssertionError: [纯空格（有值但无意义）] 期望 400，实际 200
+E         响应体: {"question":"   ","answer":"当前课程知识库中没有该知识点，无法作答。","retrieved":false,"refused":true,"evaluation":{"id":"20261108231152330802","timestamp":"2026-11-08 23:11:52","question":"   ","retrieved":false,"refused":true,"chunk_summaries":[],"answer":"当前课程知识库中没有该知识点，无法作答。"}}
+E       assert 200 == 400
+E        +  where 200 = &lt;Response [200]&gt;.status_code
+
+test_chat.py:64: AssertionError</failure></testcase><testcase classname="test_chat" name="test_chat_invalid_input[\u7c7b\u578b\u9519\u8bef]" time="0.004" /><testcase classname="test_chat" name="test_chat_prompt_injection" time="2.627" /><testcase classname="test_chat" name="test_chat_response_time" time="1.793" /><testcase classname="test_chat" name="test_chat_concurrent_no_crosstalk" time="2.435" /><testcase classname="test_documents" name="test_upload_docx_success" time="1.808" /><testcase classname="test_documents" name="test_upload_invalid_file[txt\u88ab\u62d2\u7edd]" time="0.004" /><testcase classname="test_documents" name="test_upload_invalid_file[\u7a7a\u6587\u4ef6\u88ab\u62d2\u7edd]" time="0.005"><failure message="AssertionError: [空文件] 期望 400（客户端错误），实际 500&#10;  响应体: {&quot;detail&quot;:&quot;文档处理失败：Package not found at './data/uploads\\空文件.docx'&quot;}&#10;assert 500 == 400&#10; +  where 500 = &lt;Response [500]&gt;.status_code">api = &lt;requests.sessions.Session object at 0x000001E35B6BE0A0&gt;
+filename = '空文件.docx', content = b''
+mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+case = '空文件'
+
+    @pytest.mark.negative
+    @pytest.mark.parametrize(
+        "filename, content, mime, case",
+        [
+            ("测试.txt", b"hello", "text/plain", "不支持的扩展名"),
+            ("空文件.docx", b"", DOCX_MIME, "空文件"),
+            ("伪装.docx", "这是纯文本，不是真正的 docx".encode("utf-8"), DOCX_MIME, "扩展名伪装"),
+            ("伪装.pdf", b"%PDF-1.4 fake", "application/pdf", "伪造 pdf 文件头"),
+        ],
+        ids=["txt被拒绝", "空文件被拒绝", "扩展名伪装被拒绝", "伪造pdf头被拒绝"],
+    )
+    def test_upload_invalid_file(api, filename, content, mime, case):
+        """用户输入错误应该是 4xx（客户端错误），不是 500（服务端故障）。
+    
+        若实际返回 500，说明后端把"用户传错文件"当成了"服务异常"——
+        上游无法区分该重试还是该改参数，这就是缺陷。
+        """
+        r = upload_raw(api, filename, content, mime)
+&gt;       assert r.status_code == 400, (
+            f"[{case}] 期望 400（客户端错误），实际 {r.status_code}\n"
+            f"响应体: {r.text[:300]}"
+        )
+E       AssertionError: [空文件] 期望 400（客户端错误），实际 500
+E         响应体: {"detail":"文档处理失败：Package not found at './data/uploads\\空文件.docx'"}
+E       assert 500 == 400
+E        +  where 500 = &lt;Response [500]&gt;.status_code
+
+test_documents.py:48: AssertionError</failure></testcase><testcase classname="test_documents" name="test_upload_invalid_file[\u6269\u5c55\u540d\u4f2a\u88c5\u88ab\u62d2\u7edd]" time="0.006"><failure message="AssertionError: [扩展名伪装] 期望 400（客户端错误），实际 500&#10;  响应体: {&quot;detail&quot;:&quot;文档处理失败：Package not found at './data/uploads\\伪装.docx'&quot;}&#10;assert 500 == 400&#10; +  where 500 = &lt;Response [500]&gt;.status_code">api = &lt;requests.sessions.Session object at 0x000001E35B6BE0A0&gt;
+filename = '伪装.docx'
+content = b'\xe8\xbf\x99\xe6\x98\xaf\xe7\xba\xaf\xe6\x96\x87\xe6\x9c\xac\xef\xbc\x8c\xe4\xb8\x8d\xe6\x98\xaf\xe7\x9c\x9f\xe6\xad\xa3\xe7\x9a\x84 docx'
+mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+case = '扩展名伪装'
+
+    @pytest.mark.negative
+    @pytest.mark.parametrize(
+        "filename, content, mime, case",
+        [
+            ("测试.txt", b"hello", "text/plain", "不支持的扩展名"),
+            ("空文件.docx", b"", DOCX_MIME, "空文件"),
+            ("伪装.docx", "这是纯文本，不是真正的 docx".encode("utf-8"), DOCX_MIME, "扩展名伪装"),
+            ("伪装.pdf", b"%PDF-1.4 fake", "application/pdf", "伪造 pdf 文件头"),
+        ],
+        ids=["txt被拒绝", "空文件被拒绝", "扩展名伪装被拒绝", "伪造pdf头被拒绝"],
+    )
+    def test_upload_invalid_file(api, filename, content, mime, case):
+        """用户输入错误应该是 4xx（客户端错误），不是 500（服务端故障）。
+    
+        若实际返回 500，说明后端把"用户传错文件"当成了"服务异常"——
+        上游无法区分该重试还是该改参数，这就是缺陷。
+        """
+        r = upload_raw(api, filename, content, mime)
+&gt;       assert r.status_code == 400, (
+            f"[{case}] 期望 400（客户端错误），实际 {r.status_code}\n"
+            f"响应体: {r.text[:300]}"
+        )
+E       AssertionError: [扩展名伪装] 期望 400（客户端错误），实际 500
+E         响应体: {"detail":"文档处理失败：Package not found at './data/uploads\\伪装.docx'"}
+E       assert 500 == 400
+E        +  where 500 = &lt;Response [500]&gt;.status_code
+
+test_documents.py:48: AssertionError</failure></testcase><testcase classname="test_documents" name="test_upload_invalid_file[\u4f2a\u9020pdf\u5934\u88ab\u62d2\u7edd]" time="0.018"><failure message="AssertionError: [伪造 pdf 文件头] 期望 400（客户端错误），实际 500&#10;  响应体: Internal Server Error&#10;assert 500 == 400&#10; +  where 500 = &lt;Response [500]&gt;.status_code">api = &lt;requests.sessions.Session object at 0x000001E35B6BE0A0&gt;
+filename = '伪装.pdf', content = b'%PDF-1.4 fake', mime = 'application/pdf'
+case = '伪造 pdf 文件头'
+
+    @pytest.mark.negative
+    @pytest.mark.parametrize(
+        "filename, content, mime, case",
+        [
+            ("测试.txt", b"hello", "text/plain", "不支持的扩展名"),
+            ("空文件.docx", b"", DOCX_MIME, "空文件"),
+            ("伪装.docx", "这是纯文本，不是真正的 docx".encode("utf-8"), DOCX_MIME, "扩展名伪装"),
+            ("伪装.pdf", b"%PDF-1.4 fake", "application/pdf", "伪造 pdf 文件头"),
+        ],
+        ids=["txt被拒绝", "空文件被拒绝", "扩展名伪装被拒绝", "伪造pdf头被拒绝"],
+    )
+    def test_upload_invalid_file(api, filename, content, mime, case):
+        """用户输入错误应该是 4xx（客户端错误），不是 500（服务端故障）。
+    
+        若实际返回 500，说明后端把"用户传错文件"当成了"服务异常"——
+        上游无法区分该重试还是该改参数，这就是缺陷。
+        """
+        r = upload_raw(api, filename, content, mime)
+&gt;       assert r.status_code == 400, (
+            f"[{case}] 期望 400（客户端错误），实际 {r.status_code}\n"
+            f"响应体: {r.text[:300]}"
+        )
+E       AssertionError: [伪造 pdf 文件头] 期望 400（客户端错误），实际 500
+E         响应体: Internal Server Error
+E       assert 500 == 400
+E        +  where 500 = &lt;Response [500]&gt;.status_code
+
+test_documents.py:48: AssertionError</failure></testcase><testcase classname="test_documents" name="test_upload_missing_file_field" time="0.004" /><testcase classname="test_documents" name="test_upload_path_traversal_filename" time="1.683"><failure message="AssertionError: 文件名含路径穿越未被拒绝，实际 200: {&quot;message&quot;:&quot;上传并入库成功&quot;,&quot;document&quot;:{&quot;doc_id&quot;:&quot;c1ff1cde-160e-4f4f-94de-28176d13805b&quot;,&quot;filename&quot;:&quot;../../evil.docx&quot;,&quot;chunk_count&quot;:28}}&#10;  需检查是否被写到 upload_dir 之外&#10;assert 200 in (400, 422)&#10; +  where 200 = &lt;Response [200]&gt;.status_code">api = &lt;requests.sessions.Session object at 0x000001E35B6BE0A0&gt;
+docx_path = WindowsPath('E:/DSH/new-chat/course-rag-agent/backend/操作系统课程知识库.docx')
+
+    @pytest.mark.negative
+    def test_upload_path_traversal_filename(api, docx_path):
+        """文件名路径穿越：filename 里带 ../ 时不应写到 upload_dir 之外。
+    
+        这条用例对应风险评估项 R-03（见 docs/风险点排查-course-rag-agent.md）。
+        """
+        with open(docx_path, "rb") as f:
+            r = api.post(
+                f"{BASE_URL}/api/documents/upload",
+                files={"file": ("../../evil.docx", f, DOCX_MIME)},
+                timeout=120,
+            )
+        # 期望：拒绝（400）或安全地重命名落盘；不接受 200 且文件名保留 ../
+&gt;       assert r.status_code in (400, 422), (
+            f"文件名含路径穿越未被拒绝，实际 {r.status_code}: {r.text[:200]}\n"
+            f"需检查是否被写到 upload_dir 之外"
+        )
+E       AssertionError: 文件名含路径穿越未被拒绝，实际 200: {"message":"上传并入库成功","document":{"doc_id":"c1ff1cde-160e-4f4f-94de-28176d13805b","filename":"../../evil.docx","chunk_count":28}}
+E         需检查是否被写到 upload_dir 之外
+E       assert 200 in (400, 422)
+E        +  where 200 = &lt;Response [200]&gt;.status_code
+
+test_documents.py:75: AssertionError</failure></testcase><testcase classname="test_documents" name="test_list_documents" time="0.095" /><testcase classname="test_documents" name="test_delete_existing_document" time="1.926" /><testcase classname="test_documents" name="test_delete_nonexistent_document" time="0.006"><failure message="AssertionError: 删除不存在的文档：期望 404，实际 200&#10;  响应体: {&quot;message&quot;:&quot;删除成功&quot;,&quot;doc_id&quot;:&quot;not_exist_123456&quot;}&#10;assert 200 == 404&#10; +  where 200 = &lt;Response [200]&gt;.status_code">api = &lt;requests.sessions.Session object at 0x000001E35B6BE0A0&gt;
+
+    @pytest.mark.negative
+    def test_delete_nonexistent_document(api):
+        """REST 语义：资源不存在应返回 404，而不是 500。
+    
+        当前实现未做存在性校验，可能返回 500（对应 R-01）。
+        """
+        r = delete_document(api, "not_exist_123456")
+&gt;       assert r.status_code == 404, (
+            f"删除不存在的文档：期望 404，实际 {r.status_code}\n响应体: {r.text[:300]}"
+        )
+E       AssertionError: 删除不存在的文档：期望 404，实际 200
+E         响应体: {"message":"删除成功","doc_id":"not_exist_123456"}
+E       assert 200 == 404
+E        +  where 200 = &lt;Response [200]&gt;.status_code
+
+test_documents.py:113: AssertionError</failure></testcase><testcase classname="test_evaluations" name="test_evaluations_returns_list" time="0.010" /><testcase classname="test_evaluations" name="test_evaluations_grows_after_chat" time="1.763" /><testcase classname="test_health" name="test_health_returns_ok" time="0.004" /><testcase classname="test_health" name="test_health_response_time" time="0.003" /><testcase classname="test_health" name="test_health_reflects_dependency_failure" time="0.001"><skipped type="pytest.skip" message="需先人为制造依赖故障后再执行，详见 docs/风险点排查-course-rag-agent.md 的 R-04">E:\DSH\qa-portfolio\api-tests\test_health.py:31: 需先人为制造依赖故障后再执行，详见 docs/风险点排查-course-rag-agent.md 的 R-04</skipped></testcase></testsuite></testsuites>

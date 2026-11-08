@@ -32,11 +32,18 @@ def _find_docx() -> "Path | None":
         if p.is_file():
             return p
 
-    # 常见情况：course-rag-agent 与本仓库克隆在同一父目录下
+    # 常见情况：course-rag-agent 克隆在本仓库的同级或附近目录
+    patterns = [
+        "course-rag-agent/backend/*.docx",
+        "*course-rag-agent*/backend/*.docx",
+        "new-chat/course-rag-agent/backend/*.docx",
+        "*/course-rag-agent/backend/*.docx",
+    ]
     for base in list(Path(__file__).resolve().parents)[:3]:
-        hits = sorted(base.glob("course-rag-agent/backend/*.docx"))
-        if hits:
-            return hits[0]
+        for pat in patterns:
+            hits = sorted(base.glob(pat))
+            if hits:
+                return hits[0]
     return None
 
 
@@ -67,17 +74,24 @@ def docx_path():
 
 
 @pytest.fixture(scope="session")
-def uploaded_doc(api, docx_path):
-    """保证知识库非空：已有文档就复用，没有就上传一份。
+def uploaded_doc(api):
+    """保证知识库非空：已有文档就复用，没有才上传。
 
-    这里不删除自己上传的文档——问答/评测用例都依赖它；
-    需要清理的数据由各自的 function 级 fixture 负责。
+    注意：这里**不依赖 docx_path**——知识库已有文档时，不该因为本地找不到课件
+    就把整个问答/评测组都 skip 掉（这是第一版 fixture 的设计缺陷，已修正）。
     """
     r = list_documents(api)
     existing = r.json() if r.status_code == 200 else []
     if existing:
         return existing[0]
-    return upload_docx(api, docx_path)
+
+    p = _find_docx()
+    if p is None:
+        pytest.skip(
+            "知识库为空且未找到测试课件：设置 TEST_DOCX 指向 .docx，"
+            "或把课件放进 api-tests/data/"
+        )
+    return upload_docx(api, p)
 
 
 @pytest.fixture

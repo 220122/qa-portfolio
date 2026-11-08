@@ -64,7 +64,6 @@ def write_markdown(rows, exit_code):
     bad = [r for r in rows if r["status"] in ("失败", "错误")]
     skipped = [r for r in rows if r["status"] == "跳过"]
     cost = sum(float(r["time"] or 0) for r in rows)
-
     lines = [
         f"# 接口自动化执行结果（{ts:%Y-%m-%d %H:%M}）",
         "",
@@ -111,17 +110,24 @@ def write_markdown(rows, exit_code):
 
     out = REPORT_DIR / f"执行结果-{ts:%Y%m%d-%H%M}.md"
     out.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    return out, total, ok, len(bad)
+    return out, total, ok, len(bad), len(skipped)
 
 
 def main():
     code = run_pytest()
     rows = parse_junit()
-    out, total, ok, bad = write_markdown(rows, code)
+    out, total, ok, bad, skipped = write_markdown(rows, code)
     print("\n" + "=" * 52)
-    print(f"用例 {total} 条：通过 {ok}，失败/错误 {bad}")
+    print(f"用例 {total} 条：通过 {ok}，失败/错误 {bad}，跳过 {skipped}")
     print(f"报告已生成：{out}")
     print("=" * 52)
+
+    if total and skipped == total:
+        print("\n⚠️  全部用例被跳过：说明前置条件没满足（通常是后端未启动），")
+        print("    这次运行**没有任何测试价值**，不能当作执行记录提交。")
+        print("    启动后端后重跑：cd <course-rag-agent>/backend && uvicorn main:app --port 8000")
+        return 1
+
     print("\n下一步：")
     print("  1) 失败项 → 按 bug-reports/缺陷报告模板.md 写缺陷报告")
     print("  2) 把 reports/ 里这份结果一起提交，作为真实执行记录")
