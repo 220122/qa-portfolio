@@ -9,13 +9,21 @@
 ```
 qa-portfolio/
 ├── README.md                 # 本文件：项目说明 + 结果摘要
-├── docs/                     # 风险点排查记录
+├── docs/                     # 风险点排查记录（10 条 R-xx）
 ├── test-cases/               # 测试用例（含执行结果）
-├── bug-reports/              # 缺陷报告 + 原始证据
+├── bug-reports/              # 缺陷报告 + 修复验证 + 原始证据 + 补丁
 ├── api-tests/                # pytest + requests 接口自动化 + 结果导出 + 评测集回归
-├── ui-tests/                 # Selenium + Page Object UI 自动化
-└── data/                     # 测试数据
+└── ui-tests/                 # Selenium + Page Object UI 自动化
 ```
+
+> 测试数据在 `api-tests/data/`（用例问题集 `questions.json`、评测集 `golden_set.json`）。
+
+## 30 秒阅读路线
+
+1. 本文件的「结果摘要」与「主要发现」——做了什么、发现了什么
+2. [`bug-reports/BUG-001`](bug-reports/BUG-001-上传文件名路径穿越.md)——最严重的那个缺陷，含可直接运行的复现代码
+3. [`bug-reports/修复验证报告.md`](bug-reports/修复验证报告.md)——修复前后对照与回归结果
+4. [`api-tests/conftest.py`](api-tests/conftest.py)——fixture 设计（前置链路与数据自清理）
 
 ## 被测系统：课程知识问答 RAG 智能体
 
@@ -92,9 +100,12 @@ AI 质量层回归（同一 30 条评测集，重复 3 次）：误拒答率 **2
 | 评测集回归 | Python | **30 条**（课内 20 / 课外 10），输出误拒答率与漏拒率 | **已执行：误拒答率 20.0% / 漏拒率 0.0%** |
 | 阈值扫描 | Python（离线读向量库距离） | 0.30~0.80 共 51 档，逐档算误拒答率/漏拒率，定位误拒发生在哪一层 | **已执行：排除阈值因素，定位到提示词层** |
 
-- 接口执行记录：[`api-tests/reports/执行结果-20261108-2312.md`](api-tests/reports/执行结果-20261108-2312.md)
+- 接口执行记录：[`api-tests/reports/执行结果-20261108-2312.md`](api-tests/reports/执行结果-20261108-2312.md)（修复前 18 通过 / 6 失败）
+- 接口修复后回归：[`api-tests/reports/执行结果-20261108-2340.md`](api-tests/reports/执行结果-20261108-2340.md)（24 通过 / 0 失败）
 - 评测集执行记录：[`api-tests/reports/评测集结果-20261108-2331.md`](api-tests/reports/评测集结果-20261108-2331.md)
 - 阈值扫描记录：[`api-tests/reports/阈值扫描-20261108-2334.md`](api-tests/reports/阈值扫描-20261108-2334.md)
+  > 关于 `评测集结果-2341.md` 里出现的 25%：那是同一配置下的**重复测量**之一（三次分别为 20% / 25% / 20%，漏拒率恒为 0%），
+  > 用来说明该指标存在 ±5% 波动、单次测量不足以判定回归。核心 4 条误拒项三次一致。
 - 结果导出：`cd api-tests && python export_results.py`（自动生成报告，不手抄数字）
 - 评测集回归：`python check_golden_set.py`
 - 阈值扫描：`python threshold_scan.py --backend-dir <backend 路径>`（用后端 venv 跑，无需改配置重启）
